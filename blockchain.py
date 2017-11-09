@@ -1,9 +1,12 @@
+#!/usr/bin/python3.6
+
 import hashlib
 import json
-from time import time
+from time import time, sleep
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 from uuid import uuid4
+
 
 import requests
 from flask import Flask, jsonify, request
@@ -147,16 +150,16 @@ class Blockchain:
         block_string = json.dumps(block, sort_keys=True).encode()
         return hashlib.sha256(block_string).hexdigest()
 
-    def proof_of_work(self, last_proof: int) -> int:
+    def proof_of_work(self, last_proof: int,  difficulty: float) -> int:
         """
         Simple Proof of Work Algorithm:
          - Find a number p' such that hash(pp') contains leading 4 zeroes, where p is the previous p'
          - p is the previous proof, and p' is the new proof
         """
-
         proof = 0
         while self.valid_proof(last_proof, proof) is False:
             proof += 1
+            sleep(difficulty)
 
         return proof
 
@@ -187,10 +190,15 @@ blockchain = Blockchain()
 
 @app.route('/mine', methods=['GET'])
 def mine():
+
+    ##---------- difficuty mine
+    difficulty = request.args.get('difficulty', default = 0, type = float)
+    ##----------
+
     # We run the proof of work algorithm to get the next proof...
     last_block = blockchain.last_block
     last_proof = last_block['proof']
-    proof = blockchain.proof_of_work(last_proof)
+    proof = blockchain.proof_of_work(last_proof, difficulty)
 
     # We must receive a reward for finding the proof.
     # The sender is "0" to signify that this node has mined a new coin.
@@ -199,7 +207,7 @@ def mine():
         recipient=node_identifier,
         amount=1,
     )
-
+    
     # Forge the new Block by adding it to the chain
     block = blockchain.new_block(proof, last_block['previous_hash'])
 
@@ -255,7 +263,6 @@ def register_nodes():
     }
     return jsonify(response), 201
 
-
 @app.route('/nodes/resolve', methods=['GET'])
 def consensus():
     replaced = blockchain.resolve_conflicts()
@@ -273,6 +280,13 @@ def consensus():
 
     return jsonify(response), 200
 
+##------------
+@app.route('/get_ind', methods=['GET'])
+def get_ind():
+    response = {
+        'ind': node_identifier,
+    }
+    return jsonify(response), 200
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
