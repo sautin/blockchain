@@ -1,11 +1,12 @@
 #!/bin/bash
 
-port=2000
+port=5000
 t=1
 name=${0##*/}
 n=$1
 key2=
-file='pids.file'
+file_pids='pids.file'
+file_ports='ports.file'
 
 if [ $# -eq 0 ]
     then
@@ -27,26 +28,39 @@ else
 fi
 
 function clean() {
-    pids_last=`cat $file`
+    pids_last=`cat $file_pids`
     kill $pids_last
-    rm $file;
+    rm $file_pids $file_ports
 }
 
 if [ $key2 == "clean" ]
     then
+        echo 'cleaning'
         clean
         exit
 else
-    if [ ! -f $file ]
+    if [ ! -f $file_pids ]
         then
-            touch $file
-    else
-        clean
+            echo "create $file_pids"
+            touch $file_pids
+        else
+            echo "clean $file_pids"
+            clean
+    fi
+
+    if [ ! -f $file_ports ]
+        then
+            echo "create $file_ports"
+            touch $file_ports
+        else
+            echo "clean $file_ports"
+            clean
     fi
 fi
 
 pids=""
-
+ports=""
+echo 'launch'
 for (( i=0; i<$n; i++))
 do
     let p=$port+$i
@@ -55,8 +69,11 @@ do
     let pid=$!
     echo "runned with pid $pid"
     pids="$pids$pid "
+    ports="$ports$p "
     sleep $t
 done
 echo $pids
-echo " $pids" >> $file
+echo $ports
+echo " $pids" >> $file_pids
+echo " $ports" >> $file_ports
 sleep $t
